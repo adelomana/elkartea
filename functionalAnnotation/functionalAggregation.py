@@ -1,5 +1,5 @@
 ###
-### This script (1) builds a table of all available annotation, including GO from BLAST orthologs and (2) performs hypergeometric tests on different functional categories for each comparison
+### This script (1) builds a table of all available annotation, including GO from BLAST orthologs.
 ###
 
 import sys
@@ -151,6 +151,7 @@ PFAMfile=genomeDir+'2767802313.pfam.tab.txt'
 TIGRfile=genomeDir+'2767802313.tigrfam.tab.txt'
 GOfile='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/microbesOnline/genomeInfo.txt'
 orthologyFile='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/microbesOnline/reciprocal.blast.microbesOnline.C5.output.txt'
+mo2refseqOrthologyFile='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/refseq/mo2refseq.txt'
 
 functionalAnnotationFile='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/C5/functional/C5.annotation.txt'
 
@@ -181,11 +182,14 @@ COGstone=COGreader()
 print('\t reading TIGR annottion...')
 TIGRstone=TIGRreader()
 
+# 1.7. read KIP7 Microbes-online to Refseq BLAST for annotation mapping
+intcaStone=mo2refseqReader()
+
 # 2. build a table of annotation
 print('writing functional annotation file...')
 
 g=open(functionalAnnotationFile,'w')
-g.write('#C5.transcript.name\tC5.transcript.ID\tC5.transcript.description\tKIP7.ortholog\tGO\tKEGG\tPFAM\tCOG\tTIGR\n')
+g.write('#C5.transcript.name\tC5.transcript.ID\tC5.transcript.description\tKIP7.ortholog.MO\tGO\tKEGG\tPFAM\tCOG\tTIGR\n')
 
 for transcriptName in transcriptNames:
 
@@ -230,24 +234,3 @@ for transcriptName in transcriptNames:
 
 g.close()
 
-sys.exit()
-
-# 3. perform functional enrichment on comparisons
-print('performing hypergeometric test...')
-
-functionalCategories=['GO','KEGG','PFAM','COG','TIGR']
-
-for functionalCategory in functionalCategories:
-    numberOfTests=0
-    for group in comparisons:
-        for term in terms:
-            # compute background for that particular term
-            # run hypergeometric test
-            pval = hypergeom.sf(k-1, M, n, N) # https://blog.alexlenail.me/understanding-and-implementing-the-hypergeometric-test-in-python-a7db688a7458, make sure I get the same results as in R
-            numberOfTests=numberOfTests+1
-    # correct by Bonferroni
-
-    # report
-
-# dont forget to Bonferroni correct for number of tests: number of groups times category.
-# restrict for at least 3 genes.
