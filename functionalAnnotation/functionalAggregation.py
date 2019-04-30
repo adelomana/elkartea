@@ -104,6 +104,33 @@ def KEGGreader():
 
     return KEGGstone
 
+def mo2refseqReader():
+
+    '''
+    This function reads the BLAST orthologs from KIP7 Microbes Online and RefSeq.
+    '''
+
+    # first get the map from WP to INTCA
+    stone={}
+    with open(refSeqMultiFASTA,'r') as f:
+        for line in f:
+            if line[0] == '>':
+                v=line.split()
+                wp=v[0].replace('>','')
+                intcaID=line.split('locus_tag=')[1].split(']')[0]
+                old_intcaID=line                
+                stone[wp]=intcaID
+
+    # now we are ready for ortholog mapping
+    intcaStone={}
+    with open(mo2refseqOrthologyFile,'r') as f:
+        next(f)
+        for line in f:
+            v=line.split('\t')
+            intcaStone[v[0]]=stone[v[1]]
+
+    return intcaStone
+    
 def PFAMreader():
 
     '''
@@ -121,6 +148,29 @@ def PFAMreader():
             PFAMstone[ID]=PFAMterm
 
     return PFAMstone
+
+def refseqReader():
+
+    '''
+    This function maps old and new INTCA IDs.
+    '''
+
+    newoldINTCAStone={}
+
+    with open(refSeqGFF3,'r') as f:
+       next(f)
+       next(f)
+       next(f)
+       for line in f:
+           v=line.split('\t')
+           if v[2] == 'gene':
+               field=v[8]
+               if 'old_locus_tag=' in field:
+                   new=field.split('locus_tag=')[1].split(';')[0]
+                   old=field.split('old_locus_tag=')[1].split(';')[0].replace('\n','')
+                   newoldINTCAStone[new]=old
+
+    return newoldINTCAStone
 
 def TIGRreader():
 
@@ -151,7 +201,9 @@ PFAMfile=genomeDir+'2767802313.pfam.tab.txt'
 TIGRfile=genomeDir+'2767802313.tigrfam.tab.txt'
 GOfile='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/microbesOnline/genomeInfo.txt'
 orthologyFile='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/microbesOnline/reciprocal.blast.microbesOnline.C5.output.txt'
+refSeqMultiFASTA='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/refseq/transcriptome/icalvum.NC_014830.1.cs.fasta'
 mo2refseqOrthologyFile='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/refseq/mo2refseq.txt'
+refSeqGFF3='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/refseq/genome/icalvum.NC_014830.1.2018.05.22.gff3'
 
 functionalAnnotationFile='/Volumes/omics4tb/alomana/projects/ENIGMA/data/annotations/C5/functional/C5.annotation.txt'
 
@@ -185,11 +237,14 @@ TIGRstone=TIGRreader()
 # 1.7. read KIP7 Microbes-online to Refseq BLAST for annotation mapping
 intcaStone=mo2refseqReader()
 
+# 1.8. read RefSeq annotation for old Intca IDs
+newoldINTCAStone=refseqReader()
+
 # 2. build a table of annotation
 print('writing functional annotation file...')
 
 g=open(functionalAnnotationFile,'w')
-g.write('#C5.transcript.name\tC5.transcript.ID\tC5.transcript.description\tKIP7.ortholog.MO\tGO\tKEGG\tPFAM\tCOG\tTIGR\n')
+g.write('#C5.transcript.name\tC5.transcript.ID\tC5.transcript.description\tKIP7.ortholog.MO\tKIP7.ortholog.RefSeq\tKIP7.ortholog.RefSeq.old.ID\tGO\tKEGG\tPFAM\tCOG\tTIGR\n')
 
 for transcriptName in transcriptNames:
 
@@ -200,8 +255,19 @@ for transcriptName in transcriptNames:
     # write GO
     if transcriptName in GOstone:
         g.write('\t{}'.format(orthologyStone[transcriptName]))
+        # intca
+        try:
+            VIMSSID='VIMSS'+orthologyStone[transcriptName]
+            intcaID=intcaStone[VIMSSID]
+            old=newoldINTCAStone[intcaID]
+        except:
+            intcaID=' '
+            old=' '
+        g.write('\t{}\t{}'.format(intcaID,old))
+        # GO
         g.write('\t{}'.format(GOstone[transcriptName]))
     else:
+        g.write('\t ')
         g.write('\t ')
         g.write('\t ')
 
